@@ -1,13 +1,11 @@
 """
 app.py
 
-Streamlit dashboard for UrbanMart Sales.
+UrbanMart Sales Analytics Dashboard
 
 Features:
-- Sidebar filters (date range, store_location, channel, product_category)
-- KPIs (Total Revenue, Total Transactions, Avg Revenue/Txn, Unique Customers)
-- Charts: Revenue by Category, Revenue by Store, Daily Trend
-- Tables: Top Products, Top Customers, Sample Raw Data
+- Intro / Overview page (like professor's NovaMart landing page)
+- Sales Dashboard page with filters, KPIs, charts, and tables
 """
 
 from datetime import date
@@ -18,17 +16,14 @@ import pandas as pd
 import streamlit as st
 
 
-# Use path relative to this file so it works on Streamlit Cloud and locally
+# --------- Paths / Constants ---------
 BASE_DIR = Path(__file__).parent
 DATA_FILE = BASE_DIR / "urbanmart_sales.csv"
 
 
-# -----------------------------
-# Data Loading & Preparation
-# -----------------------------
-
+# --------- Data Loading ---------
 @st.cache_data
-def load_data(filepath):
+def load_data(filepath: Path) -> pd.DataFrame:
     """Load data once and cache it for better performance."""
     df = pd.read_csv(filepath)
 
@@ -74,35 +69,96 @@ def filter_data(
     return filtered
 
 
-# -----------------------------
-# Streamlit Layout
-# -----------------------------
-
-def main() -> None:
-    st.set_page_config(
-        page_title="UrbanMart Sales Dashboard",
-        layout="wide",
-        initial_sidebar_state="expanded",
+# --------- UI: Intro / Overview Page ---------
+def show_overview_page(df: pd.DataFrame) -> None:
+    """Intro page styled like professor's NovaMart landing page."""
+    st.markdown("## 📊 UrbanMart Sales Analytics")
+    st.markdown(
+        "Comprehensive dashboard for sales performance, customer insights, "
+        "product trends, and store analytics."
     )
 
-    st.title("UrbanMart Sales Dashboard")
-    st.caption("Built using Python & Streamlit for MAIB Python Mini-Project")
+    st.markdown("---")
 
-    # Load data
-    try:
-        df = load_data(DATA_FILE)
-    except FileNotFoundError:
-        st.error("File 'urbanmart_sales.csv' not found. "
-                 "Make sure it is in the same folder as app.py in your GitHub repo.")
-        st.stop()
-    except Exception as e:
-        st.error(f"Unexpected error while loading data: {e}")
-        st.stop()
+    # Main two-column layout: Dashboard Sections (left) & Data Sources (right)
+    col_left, col_right = st.columns([1.3, 1])
+
+    with col_left:
+        st.markdown("### 🎯 Dashboard Sections")
+
+        st.markdown(
+            """
+Navigate using the sidebar to explore:
+
+1. **Executive Overview** – Key KPIs, revenue trends, and channel performance  
+2. **Customer Insights** – Customer mix, segments, and spending behavior  
+3. **Product Performance** – Top products, categories, and discount impact  
+4. **Geographic Analysis** – Store and location-wise sales performance  
+            """
+        )
+
+    with col_right:
+        st.markdown("### 📂 Data Sources")
+
+        num_rows = len(df)
+        num_customers = df["customer_id"].nunique()
+        num_products = df["product_id"].nunique()
+        num_stores = df["store_id"].nunique()
+
+        data_sources = pd.DataFrame(
+            [
+                {
+                    "Dataset": "UrbanMart Sales",
+                    "Records": f"{num_rows:,}",
+                    "Description": "Transactional sales data (stores, products, customers, channels)",
+                },
+                {
+                    "Dataset": "Customer Dimension",
+                    "Records": f"{num_customers:,}",
+                    "Description": "Unique customers with basic segmentation",
+                },
+                {
+                    "Dataset": "Product Dimension",
+                    "Records": f"{num_products:,}",
+                    "Description": "Product catalog with categories and names",
+                },
+                {
+                    "Dataset": "Store Dimension",
+                    "Records": f"{num_stores:,}",
+                    "Description": "Store IDs and locations",
+                },
+            ]
+        )
+
+        st.table(data_sources)
+
+    st.markdown("---")
+
+    # How to use the dashboard section
+    st.markdown("### 🧭 How to Use This Dashboard")
+
+    st.markdown(
+        """
+- Use the **sidebar navigation** to switch between the **Overview** and the **Sales Dashboard**.  
+- On the **Sales Dashboard** page:
+  - Apply filters for **date range**, **store locations**, **channel**, and **product categories**.  
+  - Use KPIs and charts for high-level understanding of performance.  
+- Scroll down to see **top products**, **top customers**, and sample raw data for validation.
+        """
+    )
+
+
+# --------- UI: Sales Dashboard Page ---------
+def show_sales_dashboard(df: pd.DataFrame) -> None:
+    """Full interactive sales dashboard page."""
+
+    st.markdown("## 📈 Sales Dashboard")
+    st.caption("Filter the view using the controls in the sidebar.")
 
     # -------------------------
-    # Sidebar Filters
+    # Sidebar Filters (specific to this page)
     # -------------------------
-    st.sidebar.header("Filters")
+    st.sidebar.subheader("Filters")
 
     # Date range slider: use min/max from data
     min_date = df["date"].min().date()
@@ -262,6 +318,44 @@ def main() -> None:
     st.subheader("Sample Raw Data (Filtered)")
 
     st.dataframe(df_filtered.head(20), use_container_width=True)
+
+
+# --------- Main App ---------
+def main() -> None:
+    st.set_page_config(
+        page_title="UrbanMart Sales Dashboard",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    # Sidebar header + navigation
+    st.sidebar.title("📊 UrbanMart Analytics")
+    st.sidebar.caption("Sales performance • Customers • Products • Stores")
+
+    page = st.sidebar.radio(
+        "Navigate",
+        options=["📘 Overview", "📈 Sales Dashboard"],
+        index=0,
+    )
+
+    # Load data once (both pages use it)
+    try:
+        df = load_data(DATA_FILE)
+    except FileNotFoundError:
+        st.error(
+            "File `urbanmart_sales.csv` not found.\n\n"
+            "Make sure it is in the **same folder as app.py** in your GitHub repo."
+        )
+        st.stop()
+    except Exception as e:
+        st.error(f"Unexpected error while loading data: {e}")
+        st.stop()
+
+    # Route to the selected page
+    if page == "📘 Overview":
+        show_overview_page(df)
+    else:
+        show_sales_dashboard(df)
 
 
 if __name__ == "__main__":
